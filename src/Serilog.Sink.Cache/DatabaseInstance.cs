@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using LiteDB;
 using Serilog.Events;
+using Serilog.Sink.Cache.Model;
+using FileMode = LiteDB.FileMode;
 
 namespace Serilog.Sink.Cache
 {
-    public class DatabaseInstance
+    public class DatabaseInstance : IDisposable
     {
         private LiteDatabase _connection;
 
@@ -17,6 +20,11 @@ namespace Serilog.Sink.Cache
             Connect(connectionString);
         }
 
+        public DatabaseInstance(Stream stream)
+        {
+            Connect(stream);
+        }
+
         public void StoreLog(LogEvent log)
         {
             if (log == null)
@@ -25,6 +33,7 @@ namespace Serilog.Sink.Cache
             }
 
             LogCollection.Insert(new LogEntry(log));
+            System.Diagnostics.Debug.WriteLine($"Inserting log     {log.MessageTemplate.Text}");
         }
 
         public List<LogEvent> GetAllLogs()
@@ -36,18 +45,27 @@ namespace Serilog.Sink.Cache
                 .ToList();
         }
 
-        public LogEvent GetNextLog()
+        public LogEntry GetNextLog()
         {
             var ts = LogCollection.Min(nameof(LogEntry.Timestamp));
 
             return LogCollection
-                .FindOne(Query.EQ(nameof(LogEntry.Timestamp), ts))
-                ?.LogEvent;
+                .FindOne(Query.EQ(nameof(LogEntry.Timestamp), ts));
+        }
+
+        public void RemoveLog(LogEntry logEntry)
+        {
+            LogCollection.Delete(logEntry.Id);
         }
 
         public bool Any()
         {
-            return LogCollection != null && LogCollection.Exists(x=>true);
+            return LogCollection != null && LogCollection.Exists(x => true);
+        }
+
+        public int Count()
+        {
+            return LogCollection?.Count() ?? 0;
         }
 
         public void ClearLogs()
@@ -77,11 +95,30 @@ namespace Serilog.Sink.Cache
             });
 
             EnsureIndices();
+            ConfigureBsonMapper();
+        }
+
+        private void Connect(Stream memoryStream)
+        {
+            _connection = new LiteDatabase(memoryStream);
+            EnsureIndices();
+            ConfigureBsonMapper();
         }
 
         private void EnsureIndices()
         {
             LogCollection?.EnsureIndex(logEvent => logEvent.Timestamp, false);
+        }
+
+        private void ConfigureBsonMapper()
+        {
+            BsonMapper.Global.EmptyStringToNull = false;
+            BsonMapper.Global.TrimWhitespace = false;
+        }
+
+        public void Dispose()
+        {
+            _connection?.Dispose();
         }
     }
 }

@@ -1,7 +1,9 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Serilog.Sink.Cache", "Serilog.Sink.Cache\Serilog.Sink.Cache.csproj", "{8F326024-4186-4060-830F-495033BCECAD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Serilog.Sink.Cache.Tests", "Serilog.Sink.Cache.Tests\Serilog.Sink.Cache.Tests.csproj", "{A02CF43F-86A0-4631-A1BB-104CC9C07919}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,5 +15,9 @@ Global
 		{8F326024-4186-4060-830F-495033BCECAD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8F326024-4186-4060-830F-495033BCECAD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8F326024-4186-4060-830F-495033BCECAD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A02CF43F-86A0-4631-A1BB-104CC9C07919}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A02CF43F-86A0-4631-A1BB-104CC9C07919}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A02CF43F-86A0-4631-A1BB-104CC9C07919}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A02CF43F-86A0-4631-A1BB-104CC9C07919}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

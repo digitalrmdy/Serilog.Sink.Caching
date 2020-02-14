@@ -5,15 +5,18 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Xamarin.Essentials;
+using Xamarin.Essentials.Interfaces;
+using Xamarin.Essentials.Implementation;
 
 namespace Serilog.Sink.Cache
 {
     public class CachingSink : ILogEventSink, IDisposable
     {
-        private const int LOG_PROCESS_TIMEOUT_SECONDS=30;
-        
+        private const int LOG_PROCESS_TIMEOUT_SECONDS = 30;
+
         private readonly DatabaseInstance _cache;
         private readonly List<ILogEventSink> _sinks;
+        private readonly IConnectivity _connectivity;
         private readonly SemaphoreSlim _syncProcessSemaphore;
 
         private bool _isProcessing;
@@ -21,14 +24,19 @@ namespace Serilog.Sink.Cache
         private LoggerConfiguration _loggerConfiguration;
 
 
-        public CachingSink(string connectionString)
+        public CachingSink(string connectionString, IConnectivity connectivity = null) : this(new DatabaseInstance(connectionString), connectivity)
         {
-            _cache = new DatabaseInstance(connectionString);
+        }
+
+        public CachingSink(DatabaseInstance databaseInstance, IConnectivity connectivity = null)
+        {
+            _cache = databaseInstance;
             _sinks = new List<ILogEventSink>();
+            _connectivity = connectivity ?? new ConnectivityImplementation();
 
             _syncProcessSemaphore = new SemaphoreSlim(1, 1);
 
-            Connectivity.ConnectivityChanged += OnConnectivityChanged;
+            _connectivity.ConnectivityChanged += OnConnectivityChanged;
         }
 
         public void SetLoggerConfiguration(LoggerConfiguration loggerConfiguration)
@@ -48,13 +56,18 @@ namespace Serilog.Sink.Cache
 
         public void Emit(LogEvent logEvent)
         {
+            EmitInternal(logEvent);
+        }
+
+        protected virtual void EmitInternal(LogEvent logEvent)
+        {
             _cache.StoreLog(logEvent);
             StartProcessLogs();
         }
 
         public void Dispose()
         {
-            Connectivity.ConnectivityChanged -= OnConnectivityChanged;
+            _connectivity.ConnectivityChanged -= OnConnectivityChanged;
 
             if (_sinks == null || _sinks.Count <= 0)
             {
@@ -70,6 +83,7 @@ namespace Serilog.Sink.Cache
             }
 
             _sinks.Clear();
+            _cache?.Dispose();
         }
 
         private void EmitLog(LogEvent logEvent)
@@ -82,7 +96,6 @@ namespace Serilog.Sink.Cache
             foreach (var sink in _sinks)
             {
                 sink.Emit(logEvent);
-                StartProcessLogs();
             }
         }
 
@@ -102,7 +115,7 @@ namespace Serilog.Sink.Cache
             }
         }
 
-        private async Task ProcessLogs()
+        protected virtual async Task ProcessLogs()
         {
             if (_isProcessing || !CanEmitLogs())
             {
@@ -111,31 +124,40 @@ namespace Serilog.Sink.Cache
 
             await _syncProcessSemaphore.WaitAsync(TimeSpan.FromSeconds(LOG_PROCESS_TIMEOUT_SECONDS));
 
+
             _isProcessing = true;
 
             try
             {
-                var logEvent = _cache.GetNextLog();
-                if (logEvent != null)
+                var logEntry = _cache.GetNextLog();
+                if (logEntry?.LogEvent != null)
                 {
-                    EmitLog(logEvent);
+                    System.Diagnostics.Debug.WriteLine($"Emitting log:    {logEntry.LogEvent.MessageTemplate.Text}");
+                    EmitLog(logEntry.LogEvent);
+                    _cache.RemoveLog(logEntry);
                 }
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine(ex.ToString());
             }
             finally
             {
                 _isProcessing = false;
                 _syncProcessSemaphore.Release();
             }
+            
+            StartProcessLogs();
         }
 
         private bool CanEmitLogs()
         {
-            if (Connectivity.NetworkAccess != NetworkAccess.Internet)
+            if (_connectivity.NetworkAccess != NetworkAccess.Internet)
             {
                 return false;
             }
 
-            if (_cache.Any())
+            if (!_cache.Any())
             {
                 return false;
             }
