@@ -1,10 +1,8 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using LiteDB;
 using Serilog.Events;
-using Serilog.Sink.Cache.Model;
+using Serilog.Sink.Cache.Mapping;
 using FileMode = LiteDB.FileMode;
 
 namespace Serilog.Sink.Cache
@@ -36,15 +34,6 @@ namespace Serilog.Sink.Cache
             System.Diagnostics.Debug.WriteLine($"Inserting log     {log.MessageTemplate.Text}");
         }
 
-        public List<LogEvent> GetAllLogs()
-        {
-            return LogCollection
-                .FindAll()
-                .Select(entry => entry.LogEvent)
-                .OrderBy(log => log.Timestamp)
-                .ToList();
-        }
-
         public LogEntry GetNextLog()
         {
             var ts = LogCollection.Min(nameof(LogEntry.Timestamp));
@@ -68,52 +57,30 @@ namespace Serilog.Sink.Cache
             return LogCollection?.Count() ?? 0;
         }
 
-        public void ClearLogs()
-        {
-            if (LogCollection?.Name == null)
-            {
-                return;
-            }
-
-            try
-            {
-                _connection.DropCollection(LogCollection?.Name);
-            }
-            catch
-            {
-                _connection?.DropCollectionForced(LogCollection?.Name);
-            }
-        }
-
         private void Connect(string connectionString)
         {
             _connection = new LiteDatabase(new ConnectionString(connectionString)
             {
                 Mode = FileMode.Exclusive,
                 Log = Logger.NONE,
-                Timeout = TimeSpan.FromSeconds(90),
+                Timeout = TimeSpan.FromSeconds(90)
             });
 
             EnsureIndices();
-            ConfigureBsonMapper();
+            MapperConfig.Configure();
         }
 
         private void Connect(Stream memoryStream)
         {
             _connection = new LiteDatabase(memoryStream);
             EnsureIndices();
-            ConfigureBsonMapper();
+            MapperConfig.Configure();
         }
 
         private void EnsureIndices()
         {
-            LogCollection?.EnsureIndex(logEvent => logEvent.Timestamp, false);
-        }
-
-        private void ConfigureBsonMapper()
-        {
-            BsonMapper.Global.EmptyStringToNull = false;
-            BsonMapper.Global.TrimWhitespace = false;
+            LogCollection?.EnsureIndex(logEvent => logEvent.Id);
+            LogCollection?.EnsureIndex(logEvent => logEvent.Timestamp);
         }
 
         public void Dispose()
