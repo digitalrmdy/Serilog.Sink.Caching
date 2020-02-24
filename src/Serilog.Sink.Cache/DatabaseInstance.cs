@@ -85,7 +85,16 @@ namespace Serilog.Sink.Cache
 
         public void Dispose()
         {
-            _connection?.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _connection?.Dispose();
+            }
         }
     }
 }

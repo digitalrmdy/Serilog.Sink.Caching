@@ -1,7 +1,4 @@
-using System;
 using Serilog.Configuration;
-using Serilog.Core;
-using Serilog.Events;
 
 namespace Serilog.Sink.Cache
 {

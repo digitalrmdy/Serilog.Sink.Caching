@@ -2,6 +2,7 @@
 using Serilog.Events;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xamarin.Essentials;
@@ -25,7 +26,8 @@ namespace Serilog.Sink.Cache
 
 
         public CachingSink(string connectionString, IConnectivity connectivity = null) : this(new DatabaseInstance(connectionString), connectivity)
-        { }
+        {
+        }
 
         public CachingSink(DatabaseInstance databaseInstance, IConnectivity connectivity = null)
         {
@@ -64,25 +66,33 @@ namespace Serilog.Sink.Cache
             StartProcessLogs();
         }
 
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _connectivity.ConnectivityChanged -= OnConnectivityChanged;
+
+                if (_sinks != null && _sinks.Any())
+                {
+                    foreach (var sink in _sinks)
+                    {
+                        if (sink is IDisposable disposable)
+                        {
+                            disposable.Dispose();
+                        }
+                    }
+
+                    _sinks.Clear();
+                }
+
+                _cache?.Dispose();
+            }
+        }
+
         public void Dispose()
         {
-            _connectivity.ConnectivityChanged -= OnConnectivityChanged;
-
-            if (_sinks == null || _sinks.Count <= 0)
-            {
-                return;
-            }
-
-            foreach (var sink in _sinks)
-            {
-                if (sink is IDisposable disposable)
-                {
-                    disposable.Dispose();
-                }
-            }
-
-            _sinks.Clear();
-            _cache?.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
 
         private void EmitLog(LogEvent logEvent)
@@ -145,7 +155,7 @@ namespace Serilog.Sink.Cache
                 _isProcessing = false;
                 _syncProcessSemaphore.Release();
             }
-            
+
             StartProcessLogs();
         }
 

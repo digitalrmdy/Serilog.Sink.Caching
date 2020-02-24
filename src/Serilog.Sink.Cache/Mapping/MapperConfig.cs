@@ -1,11 +1,7 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using LiteDB;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Serilog.Events;
-using JsonSerializer = Newtonsoft.Json.JsonSerializer;
 
 namespace Serilog.Sink.Cache.Mapping
 {
