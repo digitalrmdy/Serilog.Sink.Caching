@@ -16,9 +16,12 @@ namespace Serilog.Sink.Cache.Tests
 
         protected override void EmitInternal(LogEvent logEvent)
         {
-            LastLog = logEvent;
-            Logs.Add(logEvent);
-            
+            if (logEvent != null)
+            {
+                LastLog = logEvent;
+                Logs.Add(logEvent);
+            }
+
             base.EmitInternal(logEvent);
         }
     }

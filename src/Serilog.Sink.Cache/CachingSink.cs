@@ -25,8 +25,7 @@ namespace Serilog.Sink.Cache
 
 
         public CachingSink(string connectionString, IConnectivity connectivity = null) : this(new DatabaseInstance(connectionString), connectivity)
-        {
-        }
+        { }
 
         public CachingSink(DatabaseInstance databaseInstance, IConnectivity connectivity = null)
         {

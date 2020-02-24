@@ -34,6 +34,11 @@ namespace Serilog.Sink.Cache
             System.Diagnostics.Debug.WriteLine($"Inserting log     {log.MessageTemplate.Text}");
         }
 
+        public int Count()
+        {
+            return LogCollection?.Count() ?? -1;
+        }
+
         public LogEntry GetNextLog()
         {
             var ts = LogCollection.Min(nameof(LogEntry.Timestamp));
@@ -50,11 +55,6 @@ namespace Serilog.Sink.Cache
         public bool Any()
         {
             return LogCollection != null && LogCollection.Exists(x => true);
-        }
-
-        public int Count()
-        {
-            return LogCollection?.Count() ?? 0;
         }
 
         private void Connect(string connectionString)

@@ -13,11 +13,14 @@ namespace Serilog.Sink.Cache.Tests
         {
             Logs = new List<LogEvent>();
         }
-        
+
         public void Emit(LogEvent logEvent)
         {
-            LastLog = logEvent;
-            Logs.Add(logEvent);
+            if (logEvent != null)
+            {
+                LastLog = logEvent;
+                Logs.Add(logEvent);
+            }
         }
     }
 }

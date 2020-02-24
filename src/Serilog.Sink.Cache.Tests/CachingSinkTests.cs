@@ -29,7 +29,7 @@ namespace Serilog.Sink.Cache.Tests
 
         private CancellationTokenSource _cancellationTokenSource;
 
-        private async Task WaitForSyncProcess(TimeSpan timeout)
+        private async Task WaitForSyncProcess(TimeSpan timeout, IConnectivity connectivity)
         {
             _cancellationTokenSource = new CancellationTokenSource(timeout);
 
@@ -38,7 +38,7 @@ namespace Serilog.Sink.Cache.Tests
                 while (true)
                 {
                     await Task.Delay(TimeSpan.FromSeconds(0.1), _cancellationTokenSource.Token);
-                    if (!_databaseInstance.Any())
+                    if (!_databaseInstance.Any() || connectivity.NetworkAccess != NetworkAccess.Internet)
                     {
                         return;
                     }
@@ -46,7 +46,7 @@ namespace Serilog.Sink.Cache.Tests
             }
             catch (TaskCanceledException)
             {
-                System.Diagnostics.Debug.WriteLine($"Sync process canceled with {_databaseInstance.Count()} items left in database");
+                System.Diagnostics.Debug.WriteLine($"Sync process canceled due to timeout");
                 throw;
             }
         }
@@ -62,14 +62,14 @@ namespace Serilog.Sink.Cache.Tests
         {
             // Arrange
             var connectivityMock = new Mock<IConnectivity>();
-            // track changes to NetworkAccess and set default value to Internet
             connectivityMock.Setup(con => con.NetworkAccess).Returns(NetworkAccess.Internet);
+            var conn = connectivityMock.Object;
 
             var logOnlineSink = new TestableOutputSink();
 
             var logAlwaysSink = new TestableOutputSink();
 
-            var testableCacheSink = new TestableCachingSink(_databaseInstance, connectivityMock.Object);
+            var testableCacheSink = new TestableCachingSink(_databaseInstance, conn);
             testableCacheSink.AddSink(logOnlineSink);
 
 
@@ -83,14 +83,13 @@ namespace Serilog.Sink.Cache.Tests
                 logger.Write(level, "test");
 
                 // give async process some time
-                await WaitForSyncProcess(TimeSpan.FromSeconds(10));
+                await WaitForSyncProcess(TimeSpan.FromSeconds(10), conn);
             }
 
             Assert.Equal(level, testableCacheSink.LastLog?.Level);
             Assert.Equal(level, logAlwaysSink.LastLog?.Level);
             Assert.Equal(level, logOnlineSink.LastLog?.Level);
         }
-
 
         [Theory]
         [InlineData("test")]
@@ -100,14 +99,14 @@ namespace Serilog.Sink.Cache.Tests
         {
             // Arrange
             var connectivityMock = new Mock<IConnectivity>();
-            // track changes to NetworkAccess and set default value to Internet
             connectivityMock.Setup(con => con.NetworkAccess).Returns(NetworkAccess.Internet);
+            var conn = connectivityMock.Object;
 
             var logOnlineSink = new TestableOutputSink();
 
             var logAlwaysSink = new TestableOutputSink();
 
-            var testableCacheSink = new TestableCachingSink(_databaseInstance, connectivityMock.Object);
+            var testableCacheSink = new TestableCachingSink(_databaseInstance, conn);
             testableCacheSink.AddSink(logOnlineSink);
 
 
@@ -124,7 +123,7 @@ namespace Serilog.Sink.Cache.Tests
                 }
 
                 // give async process some time
-                await WaitForSyncProcess(TimeSpan.FromSeconds(10));
+                await WaitForSyncProcess(TimeSpan.FromSeconds(10), conn);
             }
 
             // Assert
@@ -148,14 +147,14 @@ namespace Serilog.Sink.Cache.Tests
         {
             // Arrange
             var connectivityMock = new Mock<IConnectivity>();
-            // track changes to NetworkAccess and set default value to Internet
             connectivityMock.Setup(con => con.NetworkAccess).Returns(NetworkAccess.Internet);
+            var conn = connectivityMock.Object;
 
             var logOnlineSink = new TestableOutputSink();
 
             var logAlwaysSink = new TestableOutputSink();
 
-            var testableCacheSink = new TestableCachingSink(_databaseInstance, connectivityMock.Object);
+            var testableCacheSink = new TestableCachingSink(_databaseInstance, conn);
             testableCacheSink.AddSink(logOnlineSink);
 
             using (var logger = new LoggerConfiguration()
@@ -170,7 +169,7 @@ namespace Serilog.Sink.Cache.Tests
 
 
                 // give async process some time
-                await WaitForSyncProcess(TimeSpan.FromSeconds(10));
+                await WaitForSyncProcess(TimeSpan.FromSeconds(10), conn);
             }
 
 
@@ -207,6 +206,131 @@ namespace Serilog.Sink.Cache.Tests
             Assert.Equal(LogEventLevel.Verbose, logOnlineSink.LastLog.Level);
             Assert.Equal(alwaysProp1.ToString(), onlineProp1.ToString());
             Assert.Equal(alwaysProp2.ToString(), onlineProp2.ToString());
+        }
+
+        [Theory]
+        [InlineData("one", "two", "three", "four", "five", NetworkAccess.Local)]
+        [InlineData("one", "two", "three", "four", "five", NetworkAccess.None)]
+        [InlineData("one", "two", "three", "four", "five", NetworkAccess.Unknown)]
+        [InlineData("one", "two", "three", "four", "five", NetworkAccess.ConstrainedInternet)]
+        public async Task Logs_LogCount_NetworkChange(string log1, string log2, string log3, string log4, string log5, NetworkAccess networkAccess)
+        {
+            // Arrange
+            var connectivityMock = new Mock<IConnectivity>();
+            var access = NetworkAccess.Internet;
+            connectivityMock.Setup(con => con.NetworkAccess).Returns(() => access);
+            var conn = connectivityMock.Object;
+
+            var logOnlineSink = new TestableOutputSink();
+
+            var logAlwaysSink = new TestableOutputSink();
+
+            var testableCacheSink = new TestableCachingSink(_databaseInstance, conn);
+            testableCacheSink.AddSink(logOnlineSink);
+
+            using (var logger = new LoggerConfiguration()
+                .MinimumLevel.Verbose()
+                .WriteTo.Sink(logAlwaysSink)
+                .WriteTo.Sink(testableCacheSink)
+                .CreateLogger())
+            {
+                // Act
+
+                logger.Write(LogEventLevel.Warning, log1);
+                logger.Write(LogEventLevel.Warning, log2);
+                logger.Write(LogEventLevel.Warning, log3);
+
+                // Wait a bit for the logs to be processed before disabling internet
+                await WaitForSyncProcess(TimeSpan.FromSeconds(10), conn);
+
+                access = networkAccess;
+                connectivityMock.Raise(c => c.ConnectivityChanged += null, new ConnectivityChangedEventArgs(conn.NetworkAccess, conn.ConnectionProfiles));
+
+
+                logger.Write(LogEventLevel.Warning, log4);
+                logger.Write(LogEventLevel.Warning, log5);
+
+
+                // give async process some time
+                await WaitForSyncProcess(TimeSpan.FromSeconds(10), conn);
+            }
+
+
+            // Assert 
+            // Assert sink log counts
+            Assert.Equal(5, testableCacheSink.Logs.Count);
+            Assert.Equal(5, logAlwaysSink.Logs.Count);
+            Assert.Equal(3, logOnlineSink.Logs.Count);
+
+            // Assert log order for online sink
+            Assert.Equal(log1, logOnlineSink.Logs[0].MessageTemplate.Text);
+            Assert.Equal(log2, logOnlineSink.Logs[1].MessageTemplate.Text);
+            Assert.Equal(log3, logOnlineSink.Logs[2].MessageTemplate.Text);
+        }
+
+        [Theory]
+        [InlineData("log1", "log2", "log3", "log4", "log5")]
+        public async Task Logs_LogCount_Reconnect(string log1, string log2, string log3, string log4, string log5)
+        {
+            // Arrange
+            var connectivityMock = new Mock<IConnectivity>();
+            var access = NetworkAccess.Internet;
+            connectivityMock.Setup(con => con.NetworkAccess).Returns(() => access);
+            var conn = connectivityMock.Object;
+
+            var logOnlineSink = new TestableOutputSink();
+
+            var logAlwaysSink = new TestableOutputSink();
+
+            var testableCacheSink = new TestableCachingSink(_databaseInstance, conn);
+            testableCacheSink.AddSink(logOnlineSink);
+
+            using (var logger = new LoggerConfiguration()
+                .MinimumLevel.Verbose()
+                .WriteTo.Sink(logAlwaysSink)
+                .WriteTo.Sink(testableCacheSink)
+                .CreateLogger())
+            {
+                // Act
+
+                logger.Write(LogEventLevel.Warning, log1);
+                logger.Write(LogEventLevel.Warning, log2);
+                logger.Write(LogEventLevel.Warning, log3);
+
+                // Wait a bit for the logs to be processed before disabling internet
+                await WaitForSyncProcess(TimeSpan.FromSeconds(10), conn);
+
+                access = NetworkAccess.None;
+                connectivityMock.Raise(c => c.ConnectivityChanged += null, new ConnectivityChangedEventArgs(conn.NetworkAccess, conn.ConnectionProfiles));
+
+                // give async process some time to stop due to disconnect
+                await Task.Delay(3);
+
+                logger.Write(LogEventLevel.Warning, log4);
+                logger.Write(LogEventLevel.Warning, log5);
+
+
+                access = NetworkAccess.Internet;
+                connectivityMock.Raise(c => c.ConnectivityChanged += null, new ConnectivityChangedEventArgs(conn.NetworkAccess, conn.ConnectionProfiles));
+
+
+                // give async process some time
+                await WaitForSyncProcess(TimeSpan.FromSeconds(10), conn);
+            }
+
+
+            // Assert 
+            // Assert sink log counts
+            Assert.Equal(5, testableCacheSink.Logs.Count);
+            Assert.Equal(5, logAlwaysSink.Logs.Count);
+            Assert.Equal(5, logOnlineSink.Logs.Count);
+
+            // Assert log order for online sink
+            Assert.Equal(log1, logOnlineSink.Logs[0].MessageTemplate.Text);
+            Assert.Equal(log2, logOnlineSink.Logs[1].MessageTemplate.Text);
+            Assert.Equal(log3, logOnlineSink.Logs[2].MessageTemplate.Text);
+            Assert.Equal(log4, logOnlineSink.Logs[3].MessageTemplate.Text);
+            Assert.Equal(log5, logOnlineSink.Logs[4].MessageTemplate.Text);
         }
     }
 }
