@@ -24,7 +24,6 @@ namespace Serilog.Sink.Cache
 
         private LoggerConfiguration _loggerConfiguration;
 
-
         public CachingSink(string connectionString, IConnectivity connectivity = null) : this(new DatabaseInstance(connectionString), connectivity)
         {
         }
@@ -132,7 +131,6 @@ namespace Serilog.Sink.Cache
             }
 
             await _syncProcessSemaphore.WaitAsync(TimeSpan.FromSeconds(LOG_PROCESS_TIMEOUT_SECONDS));
-
 
             _isProcessing = true;
 

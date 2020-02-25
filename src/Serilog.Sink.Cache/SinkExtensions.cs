@@ -11,7 +11,5 @@ namespace Serilog.Sink.Cache
             sink.SetLoggerConfiguration(config);
             return sink;
         }
-        
-        
     }
 }
