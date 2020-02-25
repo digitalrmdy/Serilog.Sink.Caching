@@ -4,7 +4,7 @@ using Serilog.Events;
 
 namespace Serilog.Sink.Cache
 {
-    public class LogEntry 
+    public class LogEntry
     {
         [BsonId]
         public Guid Id { get; set; }
@@ -15,7 +15,6 @@ namespace Serilog.Sink.Cache
 
         public LogEntry()
         {
-            
         }
 
         public LogEntry(LogEvent logEvent)

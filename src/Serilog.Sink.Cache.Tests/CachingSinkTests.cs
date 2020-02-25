@@ -72,7 +72,6 @@ namespace Serilog.Sink.Cache.Tests
             var testableCacheSink = new TestableCachingSink(_databaseInstance, conn);
             testableCacheSink.AddSink(logOnlineSink);
 
-
             using (var logger = new LoggerConfiguration()
                 .MinimumLevel.Verbose()
                 .WriteTo.Sink(logAlwaysSink)
@@ -108,7 +107,6 @@ namespace Serilog.Sink.Cache.Tests
 
             var testableCacheSink = new TestableCachingSink(_databaseInstance, conn);
             testableCacheSink.AddSink(logOnlineSink);
-
 
             using (var logger = new LoggerConfiguration()
                 .MinimumLevel.Verbose()
@@ -167,11 +165,9 @@ namespace Serilog.Sink.Cache.Tests
 
                 logger.Write(LogEventLevel.Verbose, log, prop1, prop2);
 
-
                 // give async process some time
                 await WaitForSyncProcess(TimeSpan.FromSeconds(10), conn);
             }
-
 
             // Assert always sink
             Assert.Single(logAlwaysSink.Logs);
@@ -235,7 +231,6 @@ namespace Serilog.Sink.Cache.Tests
                 .CreateLogger())
             {
                 // Act
-
                 logger.Write(LogEventLevel.Warning, log1);
                 logger.Write(LogEventLevel.Warning, log2);
                 logger.Write(LogEventLevel.Warning, log3);
@@ -246,15 +241,12 @@ namespace Serilog.Sink.Cache.Tests
                 access = networkAccess;
                 connectivityMock.Raise(c => c.ConnectivityChanged += null, new ConnectivityChangedEventArgs(conn.NetworkAccess, conn.ConnectionProfiles));
 
-
                 logger.Write(LogEventLevel.Warning, log4);
                 logger.Write(LogEventLevel.Warning, log5);
-
 
                 // give async process some time
                 await WaitForSyncProcess(TimeSpan.FromSeconds(10), conn);
             }
-
 
             // Assert 
             // Assert sink log counts
@@ -292,7 +284,6 @@ namespace Serilog.Sink.Cache.Tests
                 .CreateLogger())
             {
                 // Act
-
                 logger.Write(LogEventLevel.Warning, log1);
                 logger.Write(LogEventLevel.Warning, log2);
                 logger.Write(LogEventLevel.Warning, log3);
@@ -309,15 +300,12 @@ namespace Serilog.Sink.Cache.Tests
                 logger.Write(LogEventLevel.Warning, log4);
                 logger.Write(LogEventLevel.Warning, log5);
 
-
                 access = NetworkAccess.Internet;
                 connectivityMock.Raise(c => c.ConnectivityChanged += null, new ConnectivityChangedEventArgs(conn.NetworkAccess, conn.ConnectionProfiles));
-
 
                 // give async process some time
                 await WaitForSyncProcess(TimeSpan.FromSeconds(10), conn);
             }
-
 
             // Assert 
             // Assert sink log counts
