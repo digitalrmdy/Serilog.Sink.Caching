@@ -15,7 +15,6 @@ namespace Serilog.Sink.Cache.Mapping
             ConfigureObjectBsonMapper();
         }
 
-
         private static void ConfigureSettings()
         {
             BsonMapper.Global.EmptyStringToNull = false;
@@ -29,7 +28,6 @@ namespace Serilog.Sink.Cache.Mapping
                 bson => JsonConvert.DeserializeObject<LogEvent>(bson.AsString)
             );
         }
-
 
         private static void ConfigureObjectJsonMapper()
         {
