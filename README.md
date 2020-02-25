@@ -1,3 +1,8 @@
+# Serilog.Sink.Cache
+
+Caching Sink for Serilog
+This Sink forwards all LogEvents to its output sinks when there is an available network connection.
+When there is no connection to the internet, all LogEvents are stored in a local database and forwarded as soon as a network connection is detected.
 
 [![NuGet Badge](https://buildstats.info/nuget/serilog.sink.cache)](https://www.nuget.org/packages/Serilog.Sink.Cache/)
 [![Build Status](https://app.bitrise.io/app/b8ab60d5eddce15a/status.svg?token=kBuN-dQKUhDpaOp0ntsBSw&branch=master)](https://app.bitrise.io/app/b8ab60d5eddce15a)
