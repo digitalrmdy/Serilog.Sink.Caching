@@ -11,7 +11,7 @@
     <RepositoryUrl>https://github.com/digitalrmdy/Serilog.Sink.Caching</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageIconUrl>https://raw.githubusercontent.com/digitalrmdy/Serilog.Sink.Caching/master/Icon.png</PackageIconUrl>
-    <VersionPrefix>1.0.0</VersionPrefix>
+    <VersionPrefix>1.1.0</VersionPrefix>
     <PackageReleaseNotes>Initial release</PackageReleaseNotes>
   </PropertyGroup>
 
